@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>PlanBridge · FITR → Intervals.icu</title>
-<meta name="description" content="Import HYROX training plans from FITR into Intervals.icu"/>
+<title>PlanBridge · Upload to Intervals.icu</title>
+<meta name="description" content="Import HYROX training plans into Intervals.icu"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -217,7 +217,7 @@ tr:hover td { background:var(--surface2); }
       </div>
       <div class="logo-text">
         <h1>Plan<span>Bridge</span></h1>
-        <p>FITR → Intervals.icu · HYROX Doubles</p>
+        <p>Intervals.icu · HYROX Doubles</p>
       </div>
     </div>
     <div class="version-badge">v2.0</div>
@@ -269,10 +269,9 @@ tr:hover td { background:var(--surface2); }
       <input type="file" accept=".txt" onchange="handleFile(this.files[0])"/>
       <div class="drop-icon" id="drop-icon">📂</div>
       <div class="drop-title" id="drop-title">Drop your .txt backup here</div>
-      <div class="drop-sub" id="drop-sub">or click to select · fitr-backup-YYYY-MM.txt</div>
+      <div class="drop-sub" id="drop-sub">or click to select · file-backup-YYYY-MM.txt</div>
     </div>
     <div class="note">
-      Use the <strong>v2 FITR scraper</strong> to generate the backup file.
       One file per calendar month. The year is inferred from the filename.
     </div>
   </div>
@@ -317,7 +316,7 @@ tr:hover td { background:var(--surface2); }
 
 <script>
 /* ════════════════════════════════════════════════════════════════════
-   PlanBridge · FITR → Intervals.icu
+   PlanBridge · plan → Intervals.icu
    ════════════════════════════════════════════════════════════════════
 
    API used (Intervals.icu):
@@ -329,7 +328,7 @@ tr:hover td { background:var(--surface2); }
      Block separator  : ─ × 50 (Unicode U+2500)
      Header separator : ─ × 30 (Unicode U+2500)
      Title line       : "HYROX DOUBLES RACE PLAN Mon, April 27 Week 9, Day 1"
-     Content          : ## section headers natively from FITR DOM
+     Content          : ## section headers natively from DOM
 */
 
 const ICU = 'https://intervals.icu/api/v1';
