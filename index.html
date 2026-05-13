@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>PlanBridge · Upload to Intervals.icu</title>
-<meta name="description" content="Import training plans into Intervals.icu"/>
+<title>PlanBridge · FITR → Intervals.icu</title>
+<meta name="description" content="Import HYROX training plans from FITR into Intervals.icu"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -55,7 +55,7 @@ body {
   border:0.5px solid var(--border2); padding:3px 10px; border-radius:20px;
 }
 
-/* ── Cards ───────────────────────────────────────────────────────── */
+/* ── Cards ────────────────────────────────────────────────────────── */
 .card {
   background:var(--surface);
   border:1px solid var(--border);
@@ -217,7 +217,7 @@ tr:hover td { background:var(--surface2); }
       </div>
       <div class="logo-text">
         <h1>Plan<span>Bridge</span></h1>
-        <p>Intervals.icu · Training</p>
+        <p>FITR → Intervals.icu · HYROX Doubles</p>
       </div>
     </div>
     <div class="version-badge">v2.0</div>
@@ -269,9 +269,10 @@ tr:hover td { background:var(--surface2); }
       <input type="file" accept=".txt" onchange="handleFile(this.files[0])"/>
       <div class="drop-icon" id="drop-icon">📂</div>
       <div class="drop-title" id="drop-title">Drop your .txt backup here</div>
-      <div class="drop-sub" id="drop-sub">or click to select · file-backup-YYYY-MM.txt</div>
+      <div class="drop-sub" id="drop-sub">or click to select · fitr-backup-YYYY-MM.txt</div>
     </div>
     <div class="note">
+      Use the <strong>v2 FITR scraper</strong> to generate the backup file.
       One file per calendar month. The year is inferred from the filename.
     </div>
   </div>
@@ -316,7 +317,7 @@ tr:hover td { background:var(--surface2); }
 
 <script>
 /* ════════════════════════════════════════════════════════════════════
-   PlanBridge · plan → Intervals.icu
+   PlanBridge · FITR → Intervals.icu
    ════════════════════════════════════════════════════════════════════
 
    API used (Intervals.icu):
@@ -327,8 +328,8 @@ tr:hover td { background:var(--surface2); }
    Backup format (v2 scraper):
      Block separator  : ─ × 50 (Unicode U+2500)
      Header separator : ─ × 30 (Unicode U+2500)
-     Title line       : "RACE PLAN Mon, April 27 Week 9, Day 1"
-     Content          : ## section headers natively from DOM
+     Title line       : "HYROX DOUBLES RACE PLAN Mon, April 27 Week 9, Day 1"
+     Content          : ## section headers natively from FITR DOM
 */
 
 const ICU = 'https://intervals.icu/api/v1';
@@ -449,12 +450,13 @@ function fitrPaceToIcu(notation, base5k) {
   const raw = notation.replace(/^@/, '').replace(/\s*\(.*?\)/g, '').trim();
   const n   = raw.toUpperCase().replace(/\s+/g, '');
 
-  // Named zones
-  if (/^(?:EASY|EASYJOG|Z1[-–]?Z?2?|Z1-2)$/.test(n)) return 'Z1 Pace';
-  if (/^Z2$/.test(n))                                   return 'Z2 Pace';
-  if (/^Z3$/.test(n))                                   return 'Z3 Pace';
-  if (/^(?:HARD|Z4)$/.test(n))                          return 'Z4 Pace';
-  if (/^Z5$/.test(n))                                   return 'Z5 Pace';
+  // Named zones → absolute paces derived from base5k
+  // This avoids Intervals.icu showing (null-null) when pace zones are unconfigured
+  if (/^(?:EASY|EASYJOG|Z1[-–]?Z?2?|Z1-2)$/.test(n)) return `${secToPace(base5k+90)} Pace`; // Z1 easy
+  if (/^Z2$/.test(n))                                   return `${secToPace(base5k+60)} Pace`; // Z2 aerobic
+  if (/^Z3$/.test(n))                                   return `${secToPace(base5k+30)} Pace`; // Z3 tempo
+  if (/^(?:HARD|Z4)$/.test(n))                          return `${secToPace(base5k-10)} Pace`; // Z4 threshold
+  if (/^Z5$/.test(n))                                   return `${secToPace(base5k-25)} Pace`; // Z5 vo2max
   // Race pace = ~5k+25-30"
   if (/^(?:RACEPACE|RACE)$/.test(n))
     return `${secToPace(base5k+25)}-${secToPace(base5k+30)} Pace`;
@@ -550,12 +552,36 @@ function convertRunWorkout(description, base5k) {
       continue;
     }
 
-    // B1./B2./B3.
+    // B1./B2./B3. — separate the label from any step content on the same line
     const bM = s.match(/^B([123])\.\s*(.*)/);
     if (bM) {
       inRepeatBlock = false;
       out.push('');
-      out.push(`B${bM[1]}${bM[2] ? '. ' + bM[2] : ''}`);
+      out.push(`B${bM[1]}`);
+      // Convert any step content on the same line (e.g. "B1. 1k @ 5k")
+      const bContent = (bM[2] || '').trim();
+      if (bContent) {
+        const bDistM = bContent.match(/^(\d+(?:\.\d+)?)\s*(k|km|m|mtr)?\s*@\s*(.+)$/i);
+        if (bDistM) {
+          const dist2    = fmtDist(+bDistM[1], bDistM[2]);
+          const paceRaw2 = bDistM[3].replace(/\s*\(.*\)/,'').replace(/\s*\*.*$/,'').trim();
+          const paceNorm2 = paceRaw2.replace(/^5([+-])/, '5k$1');
+          const pace2    = fitrPaceToIcu('@' + paceNorm2, base5k);
+          out.push(pace2 ? `- ${dist2} ${pace2}` : `- ${dist2} ${paceRaw2}`);
+        } else {
+          out.push(bContent);
+        }
+      }
+      continue;
+    }
+
+    // "2x 100m ACE" — repeat with ACE strides on same line (no @ pace)
+    const nxAceM = s.match(/^(\d+)[xX]\s+(\d+(?:\.\d+)?)\s*(m|mtr|k|km)?\s+ACE[\*]?/i);
+    if (nxAceM) {
+      const dist = fmtDist(+nxAceM[2], nxAceM[3] || 'mtr');
+      out.push(`${nxAceM[1]}x`);
+      out.push(`- ${dist} ${base5k ? secToPace(base5k+90)+' Pace' : 'Z1 Pace'} ACE progressive strides`);
+      inRepeatBlock = true;
       continue;
     }
 
@@ -572,7 +598,7 @@ function convertRunWorkout(description, base5k) {
     const fastCtxM = s.match(/^Fast\s*:\s*@\s*(.+)/i);
     if (fastCtxM) {
       const p = fastCtxM[1].replace(/\s*\(.*\)/, '').replace(/\s*\*.*$/, '').trim();
-      fartlekFast = fitrPaceToIcu('@' + p, base5k) || 'Z4 Pace';
+      fartlekFast = fitrPaceToIcu('@' + p, base5k) || (secToPace(base5k-10)+' Pace');
       continue; // consumed as context
     }
     // "Easy: = "easy"" or "Easy: easy"
@@ -584,51 +610,51 @@ function convertRunWorkout(description, base5k) {
     const pyrM = s.match(/^(\d+)[´']\s*\/\s*(\d+)[´']$/);
     if (pyrM) {
       out.push('1x');
-      out.push(`- ${pyrM[1]}m ${fartlekFast || 'Z4 Pace'} Fast`);
-      out.push(`- ${pyrM[2]}m ${fartlekEasy} Easy`);
+      out.push(`- ${pyrM[1]}m ${fartlekFast || `${secToPace(base5k-10)} Pace`} Fast`);
+      out.push(`- ${pyrM[2]}m ${fartlekEasy !== 'Z1 Pace' ? fartlekEasy : secToPace(base5k+90)+' Pace'} Easy`);
       continue;
     }
 
     // Timed rest: "rest 2´" "rest 3´extra"
     const restM = s.match(/^rest\s+(\d+)[´']\s*(?:extra|btw.*)?$/i);
-    if (restM) { out.push(`- ${restM[1]}m Z1 Pace Rest`); continue; }
+    if (restM) { out.push(`- ${restM[1]}m ${base5k ? secToPace(base5k+90)+' Pace' : 'Z1 Pace'} Rest`); continue; }
 
     // Walk with second range: "60/90" walk"
     const walkM = s.match(/^(\d+)\s*\/\s*(\d+)\s*[""]\s*(walk|rest|recovery)?/i);
     if (walkM) {
       const avg = Math.round((+walkM[1] + +walkM[2]) / 2);
       const dur = avg >= 60 ? `${Math.floor(avg/60)}m${avg%60>0?(avg%60)+'s':''}` : `${avg}s`;
-      out.push(`- ${dur} Z1 Pace ${walkM[3] || 'Rest'}`); continue;
+      out.push(`- ${dur} ${base5k ? secToPace(base5k+90)+' Pace' : 'Z1 Pace'} ${walkM[3] || 'Rest'}`); continue;
     }
 
     // "Fast: 4´ON @pace"
     const fastStepM = s.match(/^Fast\s*:\s*(\d+)[´']\s*(?:ON\s*)?@\s*(.+)/i);
     if (fastStepM) {
       const pace = fitrPaceToIcu('@' + fastStepM[2].replace(/\s*\(.*\)/,'').replace(/\*.*$/,'').trim(), base5k);
-      out.push(`- ${fastStepM[1]}m ${pace || 'Z4 Pace'} Fast`); continue;
+      out.push(`- ${fastStepM[1]}m ${pace || (secToPace(base5k-10)+' Pace')} Fast`); continue;
     }
 
     // "Easy: 2´" (fartlek easy leg)
     const easyStepM = s.match(/^Easy\s*:\s*(\d+)[´']\s*$/i);
-    if (easyStepM) { out.push(`- ${easyStepM[1]}m Z1 Pace Easy`); continue; }
+    if (easyStepM) { out.push(`- ${easyStepM[1]}m ${base5k ? secToPace(base5k+90)+' Pace' : 'Z1 Pace'} Easy`); continue; }
 
     // Time step: "3´ @ 5k+25" "1´@ 5k" "2´@ easy jog" "6´ON @ Race pace*"
     const timeM = s.match(/^(\d+(?:\.\d+)?)\s*[´']\s*(?:ON\s*)?@\s*(.+)$/i);
     if (timeM) {
       const paceRaw = timeM[2].replace(/\s*\*.*$/,'').replace(/\s*\(.*\)/,'').trim();
       const pace = fitrPaceToIcu('@' + paceRaw, base5k);
-      out.push(`- ${timeM[1]}m ${pace || 'Z2 Pace'}`); continue;
+      out.push(`- ${timeM[1]}m ${pace || `${secToPace(base5k+30)} Pace`}`); continue;
     }
 
     // Bare time: "2´" (easy context — fartlek rest or undecorated step)
     const bareTimeM = s.match(/^(\d+)[´']\s*$/);
-    if (bareTimeM) { out.push(`- ${bareTimeM[1]}m Z1 Pace Easy`); continue; }
+    if (bareTimeM) { out.push(`- ${bareTimeM[1]}m ${base5k ? secToPace(base5k+90)+' Pace' : 'Z1 Pace'} Easy`); continue; }
 
     // Easy run total: "45-60´" "@Z1-2 Flat Run"
     const easyRunM = s.match(/^(\d+)-(\d+)\s*[´']/);
     if (easyRunM) {
       const avg = Math.round((+easyRunM[1] + +easyRunM[2]) / 2);
-      out.push(`- ${avg}m Z1 Pace`); continue;
+      out.push(`- ${avg}m ${base5k ? secToPace(base5k+90)+' Pace' : 'Z1 Pace'}`); continue;
     }
     if (/^@Z1-?2?\s/i.test(s)) continue; // skip — already described by time step
 
@@ -656,7 +682,7 @@ function convertRunWorkout(description, base5k) {
     if (distOnlyM) {
       const dist  = fmtDist(+distOnlyM[1], distOnlyM[2]);
       const label = (distOnlyM[3] || '').trim().replace(/^WU$/i,'Warm up').replace(/^CD$/i,'Cool down');
-      const zone  = /cool/i.test(label) || /wu|warm/i.test(label) ? 'Z1 Pace' : 'Z1 Pace';
+      const zone  = base5k ? secToPace(base5k+90)+' Pace' : 'Z1 Pace';
       out.push(`- ${dist} ${zone}${label ? ' ' + label : ''}`); continue;
     }
 
@@ -666,7 +692,7 @@ function convertRunWorkout(description, base5k) {
       const avg  = (+rangeM[1] + +rangeM[2]) / 2;
       const dist = fmtDist(avg, rangeM[3]);
       const lbl  = rangeM[4] || 'Cool down';
-      out.push(`- ${dist} Z1 Pace ${lbl}`); continue;
+      out.push(`- ${dist} ${base5k ? secToPace(base5k+90)+' Pace' : 'Z1 Pace'} ${lbl}`); continue;
     }
 
     // Non-convertible (burpees, BBJ, etc.) — keep as step cue if in repeat block
@@ -720,7 +746,7 @@ function parseBackup(text, year) {
    *   ─ × 30 between title and content  →  split on ─{20,} within block
    *
    * Each block:
-   *   parts[0] = "RACE PLAN Mon, April 27 Week 9, Day 1"
+   *   parts[0] = "HYROX DOUBLES RACE PLAN Mon, April 27 Week 9, Day 1"
    *   parts[1+] = "## WARM UP / ACTIVATION\n..."
    */
   const blocks  = text.split(/─{40,}/);
@@ -739,9 +765,7 @@ function parseBackup(text, year) {
     const date = extractDate(headerRaw, year) || extractDate(block, year);
     if (!date) continue;
 
-    // Extract plan name from the title line — works for any plan name
-    const planNameMatch = headerRaw.match(/^(.+?)\s+(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),/i);
-    const planName = planNameMatch ? planNameMatch[1].trim() : 'Training Plan';
+    const planName  = 'HYROX DOUBLES RACE PLAN';
     const weekMatch = (headerRaw + block).match(/(Week\s+\d+,\s+Day\s+\d+)/i);
     const name      = planName + (weekMatch ? ` — ${weekMatch[1]}` : '');
 
@@ -832,7 +856,7 @@ async function startUpload() {
       name:             w.name,
       description:      desc,
       type:             w.type,
-      external_id:      `pb-${w.date}`,
+      external_id:      `hyrox-${w.date}`,
       workout_doc:      {},
     };
   });
@@ -856,7 +880,7 @@ async function startUpload() {
       const count   = Array.isArray(created) ? created.length : parsedWorkouts.length;
       log(`<span class="log-ok">✓  ${count} events created / updated</span>`);
       log(`<span class="log-info">  Re-uploading the same file won't create duplicates (upsert by external_id)</span>`);
-      localStorage.setItem('pb_undo', JSON.stringify(parsedWorkouts.map(w => `pb-${w.date}`)));
+      localStorage.setItem('pb_undo', JSON.stringify(parsedWorkouts.map(w => `hyrox-${w.date}`)));
       document.getElementById('undo-btn').classList.remove('hidden');
       document.getElementById('upload-status').className   = 'status ok';
       document.getElementById('upload-status').textContent = `✓  ${count} events on your calendar`;
