@@ -204,6 +204,58 @@ tr:hover td { background:var(--surface2); }
   .field-row { grid-template-columns:1fr; }
   .stat-grid { grid-template-columns:repeat(2,1fr); }
 }
+
+/* ── Extension section ────────────────────────────────────────────── */
+.ext-hero {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.ext-icon {
+  width: 48px; height: 48px;
+  background: var(--accent);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.ext-icon svg { width: 26px; height: 26px; fill: #000; }
+.ext-title { font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+.ext-sub   { font-size: .78rem; color: var(--muted2); line-height: 1.5; }
+
+.ext-steps {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  margin-bottom: 1.25rem;
+}
+.ext-step {
+  display: flex;
+  gap: .9rem;
+  align-items: flex-start;
+}
+.step-num {
+  width: 24px; height: 24px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.step-title { font-size: .82rem; font-weight: 600; margin-bottom: 2px; }
+.step-desc  { font-size: .75rem; color: var(--muted2); line-height: 1.5; }
+.step-desc code     { font-family: 'DM Mono', monospace; color: var(--accent); font-size: .78rem; }
+.step-desc strong   { color: var(--text); }
+
+.ext-download {
+  width: 100%;
+  justify-content: center;
+  text-decoration: none;
+  margin-bottom: .25rem;
+}
 </style>
 </head>
 <body>
@@ -258,6 +310,63 @@ tr:hover td { background:var(--surface2); }
     <div class="note" id="pace-preview" style="display:none">
       <strong>Pace reference for your workouts:</strong><br/>
       <span id="pace-table"></span>
+    </div>
+  </div>
+
+
+  <!-- ── Chrome Extension ── -->
+  <div class="card" id="extension-card">
+    <div class="card-title">Chrome Extension</div>
+    <div class="ext-hero">
+      <div class="ext-icon">
+        <svg viewBox="0 0 24 24"><path d="M13 3L4 14h8l-1 7 9-11h-8l1-10z"/></svg>
+      </div>
+      <div class="ext-copy">
+        <div class="ext-title">PlanBridge for Chrome</div>
+        <div class="ext-sub">Extract workouts from FITR with one click — no DevTools, no copy-pasting scripts</div>
+      </div>
+    </div>
+
+    <div class="ext-steps">
+      <div class="ext-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Download &amp; unzip</div>
+          <div class="step-desc">Download the extension zip and unzip it anywhere on your computer.</div>
+        </div>
+      </div>
+      <div class="ext-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Open Chrome Extensions</div>
+          <div class="step-desc">Go to <code>chrome://extensions</code> and enable <strong>Developer mode</strong> (top-right toggle).</div>
+        </div>
+      </div>
+      <div class="ext-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Load the extension</div>
+          <div class="step-desc">Click <strong>Load unpacked</strong> and select the <code>chrome-extension</code> folder you unzipped.</div>
+        </div>
+      </div>
+      <div class="ext-step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Use it</div>
+          <div class="step-desc">Navigate to your FITR calendar, click the PlanBridge icon in Chrome, and hit <strong>Extract this month</strong>.</div>
+        </div>
+      </div>
+    </div>
+
+    <a class="btn btn-primary ext-download"
+       href="https://github.com/planbridgeapp/planbridge/releases/latest/download/planbridge-extension.zip"
+       download>
+      ↓ Download Extension
+    </a>
+
+    <div class="note">
+      The extension is not on the Chrome Web Store — it installs as an unpacked extension in Developer mode.
+      Your data never leaves your machine: the extension only reads the FITR page and downloads a local file.
     </div>
   </div>
 
