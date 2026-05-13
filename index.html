@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>PlanBridge · Upload to Intervals.icu</title>
-<meta name="description" content="Import HYROX training plans into Intervals.icu"/>
+<meta name="description" content="Import training plans into Intervals.icu"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -217,7 +217,7 @@ tr:hover td { background:var(--surface2); }
       </div>
       <div class="logo-text">
         <h1>Plan<span>Bridge</span></h1>
-        <p>Intervals.icu · HYROX Doubles</p>
+        <p>Intervals.icu · Training</p>
       </div>
     </div>
     <div class="version-badge">v2.0</div>
@@ -327,7 +327,7 @@ tr:hover td { background:var(--surface2); }
    Backup format (v2 scraper):
      Block separator  : ─ × 50 (Unicode U+2500)
      Header separator : ─ × 30 (Unicode U+2500)
-     Title line       : "HYROX DOUBLES RACE PLAN Mon, April 27 Week 9, Day 1"
+     Title line       : "RACE PLAN Mon, April 27 Week 9, Day 1"
      Content          : ## section headers natively from DOM
 */
 
@@ -720,7 +720,7 @@ function parseBackup(text, year) {
    *   ─ × 30 between title and content  →  split on ─{20,} within block
    *
    * Each block:
-   *   parts[0] = "HYROX DOUBLES RACE PLAN Mon, April 27 Week 9, Day 1"
+   *   parts[0] = "RACE PLAN Mon, April 27 Week 9, Day 1"
    *   parts[1+] = "## WARM UP / ACTIVATION\n..."
    */
   const blocks  = text.split(/─{40,}/);
@@ -739,7 +739,9 @@ function parseBackup(text, year) {
     const date = extractDate(headerRaw, year) || extractDate(block, year);
     if (!date) continue;
 
-    const planName  = 'HYROX DOUBLES RACE PLAN';
+    // Extract plan name from the title line — works for any plan name
+    const planNameMatch = headerRaw.match(/^(.+?)\s+(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),/i);
+    const planName = planNameMatch ? planNameMatch[1].trim() : 'Training Plan';
     const weekMatch = (headerRaw + block).match(/(Week\s+\d+,\s+Day\s+\d+)/i);
     const name      = planName + (weekMatch ? ` — ${weekMatch[1]}` : '');
 
@@ -830,7 +832,7 @@ async function startUpload() {
       name:             w.name,
       description:      desc,
       type:             w.type,
-      external_id:      `hyrox-${w.date}`,
+      external_id:      `pb-${w.date}`,
       workout_doc:      {},
     };
   });
@@ -854,7 +856,7 @@ async function startUpload() {
       const count   = Array.isArray(created) ? created.length : parsedWorkouts.length;
       log(`<span class="log-ok">✓  ${count} events created / updated</span>`);
       log(`<span class="log-info">  Re-uploading the same file won't create duplicates (upsert by external_id)</span>`);
-      localStorage.setItem('pb_undo', JSON.stringify(parsedWorkouts.map(w => `hyrox-${w.date}`)));
+      localStorage.setItem('pb_undo', JSON.stringify(parsedWorkouts.map(w => `pb-${w.date}`)));
       document.getElementById('undo-btn').classList.remove('hidden');
       document.getElementById('upload-status').className   = 'status ok';
       document.getElementById('upload-status').textContent = `✓  ${count} events on your calendar`;
